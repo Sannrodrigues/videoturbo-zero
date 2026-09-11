@@ -1,3 +1,5 @@
+import streamlit as st
+
 from llm import generate_plan
 from stock import download_for_queries
 from tts import synthesize
