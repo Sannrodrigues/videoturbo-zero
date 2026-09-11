@@ -1,9 +1,7 @@
-from pathlib import Path
-import json, os, time, streamlit as st
-from core.llm import generate_plan
-from core.stock import download_for_queries
-from core.tts import synthesize
-from core.render import media_duration, make_srt, render_video
+from llm import generate_plan
+from stock import download_for_queries
+from tts import synthesize
+from render import media_duration, make_srt, render_video
 
 st.set_page_config(page_title='VideoTurbo Zero', page_icon='🎬', layout='wide')
 st.title('🎬 VideoTurbo Zero')
