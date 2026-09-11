@@ -7,6 +7,8 @@ async def _save(text, voice, output):
     await communicate.save(output)
 
 def synthesize(text: str, voice: str, output: str):
+    if not text or not text.strip():
+        raise ValueError('O roteiro está vazio.')
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     asyncio.run(_save(text, voice, output))
     return output

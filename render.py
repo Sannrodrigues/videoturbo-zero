@@ -3,7 +3,10 @@ from pathlib import Path
 
 
 def run(cmd):
-    p = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError as exc:
+        raise RuntimeError(f'Programa não encontrado: {cmd[0]}. Instale FFmpeg e FFprobe.') from exc
     if p.returncode != 0:
         raise RuntimeError((p.stderr or p.stdout)[-5000:])
     return p.stdout
@@ -31,6 +34,8 @@ def split_chunks(text, max_chars=72):
     return chunks or [text]
 
 def make_srt(text, total_duration, output):
+    if total_duration <= 0:
+        raise ValueError('A narração gerada não possui duração válida.')
     chunks=split_chunks(text)
     weights=[max(1,len(c)) for c in chunks]; total=sum(weights); t=0.0
     lines=[]
@@ -50,7 +55,10 @@ def normalize_clip(src, out, duration, width, height):
 def render_video(clips, narration, subtitles, output, width, height, burn_subtitles=True):
     if not clips: raise ValueError('Nenhum vídeo de apoio disponível.')
     work=Path(output).parent / '_render'; work.mkdir(parents=True, exist_ok=True)
-    total=media_duration(narration); segdur=total/len(clips)
+    total=media_duration(narration)
+    if total <= 0:
+        raise ValueError('A narração gerada não possui duração válida.')
+    segdur=total/len(clips)
     norm=[]
     for i,c in enumerate(clips):
         p=str(work/f'norm_{i:02d}.mp4'); normalize_clip(c,p,segdur,width,height); norm.append(p)

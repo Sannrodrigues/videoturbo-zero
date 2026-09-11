@@ -4,9 +4,13 @@ import requests
 PEXELS_SEARCH = 'https://api.pexels.com/v1/videos/search'
 
 def search_videos(api_key: str, query: str, orientation: str, per_page: int = 5):
+    if not query.strip():
+        return []
     headers = {'Authorization': api_key}
     params = {'query': query, 'orientation': orientation, 'size': 'medium', 'per_page': per_page}
     r = requests.get(PEXELS_SEARCH, headers=headers, params=params, timeout=30)
+    if r.status_code == 401:
+        raise RuntimeError('A chave do Pexels foi recusada. Verifique Streamlit Secrets ou a chave informada.')
     r.raise_for_status()
     return r.json().get('videos', [])
 
@@ -31,7 +35,7 @@ def download_for_queries(api_key: str, queries, orientation: str, dest_dir: str)
         seen.add(picked.get('id'))
         vf = _best_file(picked)
         path = Path(dest_dir) / f'clip_{i+1:02d}.mp4'
-        with requests.get(vf['link'], stream=True, timeout=90) as rr:
+        with requests.get(vf['link'], stream=True, timeout=(15, 120)) as rr:
             rr.raise_for_status()
             with open(path, 'wb') as f:
                 for chunk in rr.iter_content(chunk_size=1024*1024):

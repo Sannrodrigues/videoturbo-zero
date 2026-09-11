@@ -1,3 +1,4 @@
+import json
 import streamlit as st
 import time
 from pathlib import Path
@@ -7,15 +8,25 @@ from stock import download_for_queries
 from tts import synthesize
 from render import media_duration, make_srt, render_video
 
+
+def get_secret(name: str) -> str:
+    """Read an optional Streamlit secret without failing when none is configured."""
+    try:
+        return str(st.secrets.get(name, ""))
+    except (FileNotFoundError, KeyError):
+        return ""
+
 st.set_page_config(page_title='VideoTurbo Zero', page_icon='🎬', layout='wide')
 st.title('🎬 VideoTurbo Zero')
 st.caption('Tema → roteiro → voz → vídeos gratuitos → legendas → MP4. Sem assinatura e sem créditos.')
 
 with st.sidebar:
     st.header('Configuração gratuita')
-    gemini_key=st.text_input('Gemini API Key (para roteiro automático)', type='password')
-    pexels_key=st.text_input('Pexels API Key (vídeos gratuitos)', type='password')
-    st.info('As chaves ficam apenas nesta sessão do navegador e não são gravadas pelo app.')
+    gemini_secret = get_secret('GEMINI_API_KEY')
+    pexels_secret = get_secret('PEXELS_API_KEY')
+    gemini_key = st.text_input('Gemini API Key (para roteiro automático)', value=gemini_secret, type='password')
+    pexels_key = st.text_input('Pexels API Key (vídeos gratuitos)', value=pexels_secret, type='password')
+    st.info('As chaves podem ficar em Streamlit Secrets ou apenas nesta sessão. Nunca são gravadas pelo app.')
 
 col1,col2=st.columns([2,1])
 with col1:
@@ -61,10 +72,16 @@ if plan:
     queries=[]
     for i,s in enumerate(plan.get('scenes',[])):
         q=st.text_input(f'Cena {i+1}', value=s.get('search_query',''), key=f'q{i}')
-        queries.append(q)
+        if q.strip():
+            queries.append(q.strip())
 
     if st.button('2. GERAR VÍDEO COMPLETO', type='primary', use_container_width=True):
-        if not pexels_key: st.error('Informe a chave gratuita do Pexels.')
+        if not pexels_key:
+            st.error('Informe a chave gratuita do Pexels em Streamlit Secrets ou na barra lateral.')
+        elif not plan['narration'].strip():
+            st.error('O roteiro está vazio.')
+        elif not queries:
+            st.error('Informe ao menos uma busca visual para o Pexels.')
         else:
             job=Path('output')/f'video_{int(time.time())}'; job.mkdir(parents=True,exist_ok=True)
             audio=str(job/'narration.mp3'); srt=str(job/'subtitles.srt'); out=str(job/'video_final.mp4')
@@ -82,9 +99,10 @@ if plan:
                     make_srt(plan['narration'], dur, srt)
                     st.write('4/4 Montando o MP4 com FFmpeg...')
                     render_video(clips,audio,srt,out,*dims,burn_subtitles=True)
-                    (job/'credits.json').write_text(json.dumps(credits,ensure_ascii=False,indent=2),encoding='utf-8')
+                    (job/'credits.json').write_text(json.dumps(credits, ensure_ascii=False, indent=2), encoding='utf-8')
                     status.update(label='Vídeo concluído!', state='complete')
                 st.video(out)
                 with open(out,'rb') as f: st.download_button('BAIXAR MP4', f, file_name='videoturbo.mp4', mime='video/mp4', use_container_width=True)
             except Exception as e:
                 st.error(f'Falha: {e}')
+                st.caption('O vídeo parcial, se existir, fica na pasta output do ambiente de execução.')

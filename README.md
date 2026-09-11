@@ -33,3 +33,15 @@ O projeto foi desenhado para rodar em Python 3.11+, portanto o caminho mais simp
 
 ## Privacidade
 As chaves digitadas na interface são mantidas apenas na sessão do Streamlit. O código não grava essas chaves em disco.
+
+No Streamlit Community Cloud, configure **App settings → Secrets** (nunca no GitHub):
+
+```toml
+PEXELS_API_KEY = "sua_chave_gratuita"
+# Opcional, apenas para gerar roteiro automaticamente:
+GEMINI_API_KEY = "sua_chave_gemini"
+```
+
+Também é possível colar as chaves na barra lateral durante uma sessão. Para gerar um
+MP4 completo basta usar o roteiro manual, a chave gratuita do Pexels e o Edge TTS;
+o Gemini permanece opcional.
