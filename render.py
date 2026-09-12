@@ -61,7 +61,11 @@ def render_video(clips, narration, subtitles, output, width, height, burn_subtit
     segdur=total/len(clips)
     norm=[]
     for i,c in enumerate(clips):
-        p=str(work/f'norm_{i:02d}.mp4'); normalize_clip(c,p,segdur,width,height); norm.append(p)
+        p=str(work/f'norm_{i:02d}.mp4')
+        normalize_clip(c, p, segdur, width, height)
+        # The concat demuxer resolves relative entries from concat.txt itself.
+        # Use absolute paths so it cannot prepend the render directory twice.
+        norm.append(os.path.abspath(p))
     concat=work/'concat.txt'
     concat.write_text('\n'.join("file '"+p.replace("'", "'\\''")+"'" for p in norm),encoding='utf-8')
     base=str(work/'base.mp4')
