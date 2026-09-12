@@ -27,5 +27,6 @@ Return ONLY valid JSON with this exact schema:
   ]
 }}
 Rules: 4-10 scenes, factual language, no fabricated statistics, each search_query must be visual and suitable for Pexels stock footage.'''
-    response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+    # Gemini 2.5 Flash was retired by the API; use the currently suggested Flash model.
+    response = client.models.generate_content(model='gemini-3.6-flash', contents=prompt)
     return _extract_json(response.text)
