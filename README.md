@@ -53,3 +53,25 @@ Viral cria cinco ganchos para testar no início do roteiro. Após montar o MP4, 
 de publicação prepara título, descrição e atalhos para as páginas oficiais de upload.
 Publicação automática será adicionada apenas por integrações oficiais e contas que o
 usuário autorizar; o app não envia vídeos sem confirmação.
+# Publicação direta no YouTube (opcional)
+
+O app pode enviar o MP4 diretamente para o canal que o usuário conectar. No
+Google Cloud, ative a **YouTube Data API v3** e crie um cliente OAuth do tipo
+**Aplicativo da Web**, com esta URI de redirecionamento:
+
+```
+https://videoturbo-zero-evplcslk8zxqbdbqxvqshy.streamlit.app/
+```
+
+Em **Streamlit → App settings → Secrets**, inclua somente os valores do JSON
+baixado do Google (nunca envie esse JSON ou a chave secreta para o GitHub):
+
+```toml
+YOUTUBE_CLIENT_ID = "cole o client_id do JSON"
+YOUTUBE_CLIENT_SECRET = "cole o client_secret do JSON"
+YOUTUBE_REDIRECT_URI = "https://videoturbo-zero-evplcslk8zxqbdbqxvqshy.streamlit.app/"
+```
+
+Para um app OAuth externo em teste, adicione a conta Google que publicará os
+vídeos em **Google Cloud → Google Auth Platform → Público-alvo → Usuários de
+teste**. A autorização e a publicação só ocorrem após os cliques do usuário.

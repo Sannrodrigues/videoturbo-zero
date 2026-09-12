@@ -8,6 +8,7 @@ from stock import download_for_queries
 from tts import synthesize
 from render import media_duration, make_srt, render_video
 from viral import fallback_radar, fallback_hooks, publish_copy, share_links
+from youtube import authorization_url, configured as youtube_configured, credentials_from_code, upload_video
 
 
 def get_secret(name: str) -> str:
@@ -17,9 +18,29 @@ def get_secret(name: str) -> str:
     except (FileNotFoundError, KeyError):
         return ""
 
+
+def youtube_settings() -> dict[str, str]:
+    return {
+        'YOUTUBE_CLIENT_ID': get_secret('YOUTUBE_CLIENT_ID'),
+        'YOUTUBE_CLIENT_SECRET': get_secret('YOUTUBE_CLIENT_SECRET'),
+        'YOUTUBE_REDIRECT_URI': get_secret('YOUTUBE_REDIRECT_URI'),
+    }
+
 st.set_page_config(page_title='VideoTurbo Zero', page_icon='🎬', layout='wide')
 st.title('🎬 VideoTurbo Zero')
 st.caption('Tema → roteiro → voz → vídeos gratuitos → legendas → MP4. Sem assinatura e sem créditos.')
+
+youtube_config = youtube_settings()
+if youtube_configured(youtube_config):
+    oauth_code = st.query_params.get('code')
+    oauth_state = st.query_params.get('state')
+    if oauth_code and oauth_state and 'youtube_credentials' not in st.session_state:
+        try:
+            st.session_state.youtube_credentials = credentials_from_code(youtube_config, oauth_code, oauth_state)
+            st.query_params.clear()
+            st.success('Canal do YouTube conectado nesta sessão.')
+        except Exception as exc:
+            st.error(f'Não foi possível conectar o YouTube: {exc}')
 
 with st.sidebar:
     st.header('Configuração gratuita')
@@ -142,8 +163,32 @@ if plan:
                 copy = publish_copy(plan['title'], topic or plan['title'], hooks)
                 st.text_input('Título para publicação', value=copy['title'], key='publish_title')
                 st.text_area('Descrição sugerida', value=copy['description'], key='publish_description', height=120)
-                st.caption('O upload ainda é feito na conta conectada a cada rede. Não publicamos sem a sua autorização.')
+                st.subheader('▶️ Publicar diretamente no YouTube')
+                if not youtube_configured(youtube_config):
+                    st.info('Configure o OAuth do YouTube em Streamlit Secrets para liberar a publicação direta.')
+                elif 'youtube_credentials' not in st.session_state:
+                    st.caption('A conexão usa a conta Google que você escolher e só permite publicar após o seu clique final.')
+                    st.link_button('1. CONECTAR MEU YOUTUBE', authorization_url(youtube_config), type='primary', use_container_width=True)
+                else:
+                    st.success('Canal conectado nesta sessão.')
+                    privacy = st.selectbox('Visibilidade no YouTube', ['private', 'unlisted', 'public'], format_func=lambda x: {'private':'Privado (recomendado para teste)', 'unlisted':'Não listado', 'public':'Público'}[x])
+                    if st.button('PUBLICAR NO YOUTUBE', type='primary', use_container_width=True):
+                        try:
+                            with st.status('Enviando vídeo para o YouTube...', expanded=True) as upload_status:
+                                st.write('Enviando o MP4 para o canal conectado...')
+                                video_id = upload_video(
+                                    st.session_state.youtube_credentials, out,
+                                    st.session_state.publish_title, st.session_state.publish_description, privacy,
+                                )
+                                upload_status.update(label='Vídeo publicado no YouTube!', state='complete')
+                            st.success('Publicação concluída.')
+                            st.link_button('ABRIR VÍDEO NO YOUTUBE', f'https://youtu.be/{video_id}', use_container_width=True)
+                        except Exception as exc:
+                            st.error(f'Não foi possível publicar no YouTube: {exc}')
+                st.caption('Para as demais redes, o upload continua sendo feito na conta conectada a cada rede.')
                 for network, url in share_links(copy['title'], copy['description']).items():
+                    if network == 'YouTube Studio':
+                        continue
                     st.link_button(f'Abrir {network}', url)
             except Exception as e:
                 st.error(f'Falha: {e}')
