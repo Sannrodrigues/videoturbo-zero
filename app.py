@@ -7,6 +7,7 @@ from llm import generate_plan
 from stock import download_for_queries
 from tts import synthesize
 from render import media_duration, make_srt, render_video
+from viral import fallback_radar, fallback_hooks, publish_copy, share_links
 
 
 def get_secret(name: str) -> str:
@@ -48,6 +49,23 @@ with col2:
     voice=st.selectbox('Voz', voice_map[language])
 
 if 'plan' not in st.session_state: st.session_state.plan=None
+if 'viral_hooks' not in st.session_state: st.session_state.viral_hooks=[]
+
+with st.expander('🚀 Radar Viral e Modo Viral', expanded=False):
+    st.caption('Use tendências como inspiração; não promete viralização. Funciona gratuitamente, mesmo sem outra API.')
+    radar_col, reference_col = st.columns(2)
+    with radar_col:
+        niche = st.text_input('Nicho para o radar', placeholder='Ex.: finanças pessoais, fitness, IA')
+        audience = st.text_input('Público', placeholder='Ex.: iniciantes, mães, pequenos empresários')
+        if st.button('GERAR IDEIAS DE ALTO POTENCIAL'):
+            st.session_state.radar = fallback_radar(niche, audience)
+    with reference_col:
+        references = st.text_area('Referências que você viu (opcional)', placeholder='Cole títulos, links ou anotações de vídeos que chamaram atenção.')
+        st.caption('As referências ajudam você a estudar padrões sem copiar conteúdo de outras pessoas.')
+    for item in st.session_state.get('radar', []):
+        st.write(f"**{item['angle']}** · Retenção: {item['retention']}\n\n{item['topic']}")
+    st.divider()
+    st.caption('Depois de escrever o tema abaixo, o Modo Viral cria cinco aberturas para você testar.')
 
 if st.button('1. CRIAR / PREPARAR ROTEIRO', type='primary', use_container_width=True):
     if mode.startswith('Gerar'):
@@ -81,6 +99,17 @@ if plan:
         if q.strip():
             queries.append(q.strip())
 
+    st.subheader('🚀 Modo Viral — ganchos para os primeiros segundos')
+    if st.button('GERAR 5 GANCHOS', use_container_width=True):
+        st.session_state.viral_hooks = fallback_hooks(plan['title'] or topic)
+    hooks = st.session_state.get('viral_hooks', [])
+    if hooks:
+        selected_hook = st.radio('Escolha o gancho que será usado no vídeo', hooks, key='selected_hook')
+        if st.button('APLICAR GANCHO AO ROTEIRO'):
+            if not plan['narration'].startswith(selected_hook):
+                plan['narration'] = f'{selected_hook}\n\n{plan["narration"]}'
+            st.success('Gancho aplicado ao início da narração.')
+
     if st.button('2. GERAR VÍDEO COMPLETO', type='primary', use_container_width=True):
         if not pexels_key:
             st.error('Informe a chave gratuita do Pexels em Streamlit Secrets ou na barra lateral.')
@@ -109,6 +138,13 @@ if plan:
                     status.update(label='Vídeo concluído!', state='complete')
                 st.video(out)
                 with open(out,'rb') as f: st.download_button('BAIXAR MP4', f, file_name='videoturbo.mp4', mime='video/mp4', use_container_width=True)
+                st.subheader('📣 Publicar e compartilhar')
+                copy = publish_copy(plan['title'], topic or plan['title'], hooks)
+                st.text_input('Título para publicação', value=copy['title'], key='publish_title')
+                st.text_area('Descrição sugerida', value=copy['description'], key='publish_description', height=120)
+                st.caption('O upload ainda é feito na conta conectada a cada rede. Não publicamos sem a sua autorização.')
+                for network, url in share_links(copy['title'], copy['description']).items():
+                    st.link_button(f'Abrir {network}', url)
             except Exception as e:
                 st.error(f'Falha: {e}')
                 st.caption('O vídeo parcial, se existir, fica na pasta output do ambiente de execução.')

@@ -45,3 +45,11 @@ GEMINI_API_KEY = "sua_chave_gemini"
 Também é possível colar as chaves na barra lateral durante uma sessão. Para gerar um
 MP4 completo basta usar o roteiro manual, a chave gratuita do Pexels e o Edge TTS;
 o Gemini permanece opcional.
+
+## Radar Viral, ganchos e publicação
+
+O Radar Viral cria ideias por nicho e ângulo de retenção sem custo adicional. O Modo
+Viral cria cinco ganchos para testar no início do roteiro. Após montar o MP4, o painel
+de publicação prepara título, descrição e atalhos para as páginas oficiais de upload.
+Publicação automática será adicionada apenas por integrações oficiais e contas que o
+usuário autorizar; o app não envia vídeos sem confirmação.
