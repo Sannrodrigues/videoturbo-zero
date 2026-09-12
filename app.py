@@ -54,7 +54,13 @@ if st.button('1. CRIAR / PREPARAR ROTEIRO', type='primary', use_container_width=
         if not (topic and gemini_key): st.error('Informe o tema e a chave gratuita do Gemini.')
         else:
             with st.spinner('Criando roteiro e cenas...'):
-                st.session_state.plan=generate_plan(gemini_key, topic, language, duration, style)
+                try:
+                    st.session_state.plan = generate_plan(gemini_key, topic, language, duration, style)
+                except Exception:
+                    st.error(
+                        'Não foi possível gerar o roteiro com Gemini. Verifique se a chave está ativa, '
+                        'se a API Gemini está disponível para a sua conta e tente novamente.'
+                    )
     else:
         if not manual.strip(): st.error('Cole seu roteiro.')
         else:
