@@ -42,6 +42,16 @@ if youtube_configured(youtube_config):
         except Exception as exc:
             st.error(f'Não foi possível conectar o YouTube: {exc}')
 
+with st.container(border=True):
+    st.subheader('▶️ YouTube')
+    if not youtube_configured(youtube_config):
+        st.caption('A publicação direta pode ser configurada depois em Streamlit Secrets.')
+    elif 'youtube_credentials' in st.session_state:
+        st.success('Canal conectado nesta sessão. Crie o vídeo e publique no final.')
+    else:
+        st.caption('Conecte seu canal antes de criar o vídeo. Isso não publica nada; apenas autoriza o envio quando você clicar em Publicar no final.')
+        st.link_button('CONECTAR MEU YOUTUBE', authorization_url(youtube_config), type='primary')
+
 with st.sidebar:
     st.header('Configuração gratuita')
     gemini_secret = get_secret('GEMINI_API_KEY')
@@ -167,8 +177,7 @@ if plan:
                 if not youtube_configured(youtube_config):
                     st.info('Configure o OAuth do YouTube em Streamlit Secrets para liberar a publicação direta.')
                 elif 'youtube_credentials' not in st.session_state:
-                    st.caption('A conexão usa a conta Google que você escolher e só permite publicar após o seu clique final.')
-                    st.link_button('1. CONECTAR MEU YOUTUBE', authorization_url(youtube_config), type='primary', use_container_width=True)
+                    st.warning('Conecte seu canal no início da página e gere o vídeo novamente. A conexão não publica nada automaticamente.')
                 else:
                     st.success('Canal conectado nesta sessão.')
                     privacy = st.selectbox('Visibilidade no YouTube', ['private', 'unlisted', 'public'], format_func=lambda x: {'private':'Privado (recomendado para teste)', 'unlisted':'Não listado', 'public':'Público'}[x])
