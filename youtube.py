@@ -37,6 +37,12 @@ def _sign(payload: str, client_secret: str) -> str:
     return hmac.new(client_secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
 
 
+def _code_verifier(state: str, client_secret: str) -> str:
+    """Create a deterministic PKCE verifier that survives the Google redirect."""
+    digest = hmac.new(client_secret.encode(), state.encode(), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode().rstrip("=")
+
+
 def make_state(client_secret: str) -> str:
     payload = f"{int(time.time())}.{secrets.token_urlsafe(24)}"
     raw = f"{payload}.{_sign(payload, client_secret)}"
@@ -58,12 +64,14 @@ def valid_state(state: str, client_secret: str) -> bool:
 def authorization_url(settings: Mapping[str, str]) -> str:
     from google_auth_oauthlib.flow import Flow
 
+    state = make_state(settings["YOUTUBE_CLIENT_SECRET"])
     flow = Flow.from_client_config(
-        _client_config(settings), scopes=[YOUTUBE_UPLOAD_SCOPE], redirect_uri=settings["YOUTUBE_REDIRECT_URI"]
+        _client_config(settings), scopes=[YOUTUBE_UPLOAD_SCOPE], redirect_uri=settings["YOUTUBE_REDIRECT_URI"],
+        state=state, code_verifier=_code_verifier(state, settings["YOUTUBE_CLIENT_SECRET"]),
     )
     url, _ = flow.authorization_url(
         access_type="offline", include_granted_scopes="true", prompt="consent",
-        state=make_state(settings["YOUTUBE_CLIENT_SECRET"]),
+        state=state,
     )
     return url
 
@@ -76,6 +84,7 @@ def credentials_from_code(settings: Mapping[str, str], code: str, state: str):
     flow = Flow.from_client_config(
         _client_config(settings), scopes=[YOUTUBE_UPLOAD_SCOPE],
         redirect_uri=settings["YOUTUBE_REDIRECT_URI"], state=state,
+        code_verifier=_code_verifier(state, settings["YOUTUBE_CLIENT_SECRET"]),
     )
     flow.fetch_token(code=code)
     return flow.credentials
