@@ -81,6 +81,7 @@ with col2:
 
 if 'plan' not in st.session_state: st.session_state.plan=None
 if 'viral_hooks' not in st.session_state: st.session_state.viral_hooks=[]
+if 'last_video' not in st.session_state: st.session_state.last_video=None
 
 with st.expander('🚀 Radar Viral e Modo Viral', expanded=False):
     st.caption('Use tendências como inspiração; não promete viralização. Funciona gratuitamente, mesmo sem outra API.')
@@ -166,39 +167,48 @@ if plan:
                     st.write('4/4 Montando o MP4 com FFmpeg...')
                     render_video(clips,audio,srt,out,*dims,burn_subtitles=True)
                     (job/'credits.json').write_text(json.dumps(credits, ensure_ascii=False, indent=2), encoding='utf-8')
+                    copy = publish_copy(plan['title'], topic or plan['title'], hooks)
+                    st.session_state.last_video = {'path': out, 'copy': copy}
+                    st.session_state.publish_title = copy['title']
+                    st.session_state.publish_description = copy['description']
                     status.update(label='Vídeo concluído!', state='complete')
-                st.video(out)
-                with open(out,'rb') as f: st.download_button('BAIXAR MP4', f, file_name='videoturbo.mp4', mime='video/mp4', use_container_width=True)
-                st.subheader('📣 Publicar e compartilhar')
-                copy = publish_copy(plan['title'], topic or plan['title'], hooks)
-                st.text_input('Título para publicação', value=copy['title'], key='publish_title')
-                st.text_area('Descrição sugerida', value=copy['description'], key='publish_description', height=120)
-                st.subheader('▶️ Publicar diretamente no YouTube')
-                if not youtube_configured(youtube_config):
-                    st.info('Configure o OAuth do YouTube em Streamlit Secrets para liberar a publicação direta.')
-                elif 'youtube_credentials' not in st.session_state:
-                    st.warning('Conecte seu canal no início da página e gere o vídeo novamente. A conexão não publica nada automaticamente.')
-                else:
-                    st.success('Canal conectado nesta sessão.')
-                    privacy = st.selectbox('Visibilidade no YouTube', ['private', 'unlisted', 'public'], format_func=lambda x: {'private':'Privado (recomendado para teste)', 'unlisted':'Não listado', 'public':'Público'}[x])
-                    if st.button('PUBLICAR NO YOUTUBE', type='primary', use_container_width=True):
-                        try:
-                            with st.status('Enviando vídeo para o YouTube...', expanded=True) as upload_status:
-                                st.write('Enviando o MP4 para o canal conectado...')
-                                video_id = upload_video(
-                                    st.session_state.youtube_credentials, out,
-                                    st.session_state.publish_title, st.session_state.publish_description, privacy,
-                                )
-                                upload_status.update(label='Vídeo publicado no YouTube!', state='complete')
-                            st.success('Publicação concluída.')
-                            st.link_button('ABRIR VÍDEO NO YOUTUBE', f'https://youtu.be/{video_id}', use_container_width=True)
-                        except Exception as exc:
-                            st.error(f'Não foi possível publicar no YouTube: {exc}')
-                st.caption('Para as demais redes, o upload continua sendo feito na conta conectada a cada rede.')
-                for network, url in share_links(copy['title'], copy['description']).items():
-                    if network == 'YouTube Studio':
-                        continue
-                    st.link_button(f'Abrir {network}', url)
             except Exception as e:
                 st.error(f'Falha: {e}')
                 st.caption('O vídeo parcial, se existir, fica na pasta output do ambiente de execução.')
+
+    last_video = st.session_state.get('last_video')
+    if last_video and Path(last_video['path']).exists():
+        video_path = last_video['path']
+        copy = last_video['copy']
+        st.video(video_path)
+        with open(video_path,'rb') as f:
+            st.download_button('BAIXAR MP4', f, file_name='videoturbo.mp4', mime='video/mp4', use_container_width=True)
+        st.subheader('📣 Publicar e compartilhar')
+        st.text_input('Título para publicação', value=copy['title'], key='publish_title')
+        st.text_area('Descrição sugerida', value=copy['description'], key='publish_description', height=120)
+        st.subheader('▶️ Publicar diretamente no YouTube')
+        if not youtube_configured(youtube_config):
+            st.info('Configure o OAuth do YouTube em Streamlit Secrets para liberar a publicação direta.')
+        elif 'youtube_credentials' not in st.session_state:
+            st.warning('Conecte seu canal no início da página e gere o vídeo novamente. A conexão não publica nada automaticamente.')
+        else:
+            st.success('Canal conectado nesta sessão.')
+            privacy = st.selectbox('Visibilidade no YouTube', ['private', 'unlisted', 'public'], format_func=lambda x: {'private':'Privado (recomendado para teste)', 'unlisted':'Não listado', 'public':'Público'}[x])
+            if st.button('PUBLICAR NO YOUTUBE', type='primary', use_container_width=True):
+                try:
+                    with st.status('Enviando vídeo para o YouTube...', expanded=True) as upload_status:
+                        st.write('Enviando o MP4 para o canal conectado...')
+                        video_id = upload_video(
+                            st.session_state.youtube_credentials, video_path,
+                            st.session_state.publish_title, st.session_state.publish_description, privacy,
+                        )
+                        upload_status.update(label='Vídeo publicado no YouTube!', state='complete')
+                    st.success('Publicação concluída.')
+                    st.link_button('ABRIR VÍDEO NO YOUTUBE', f'https://youtu.be/{video_id}', use_container_width=True)
+                except Exception as exc:
+                    st.error(f'Não foi possível publicar no YouTube: {exc}')
+        st.caption('Para as demais redes, o upload continua sendo feito na conta conectada a cada rede.')
+        for network, url in share_links(copy['title'], copy['description']).items():
+            if network == 'YouTube Studio':
+                continue
+            st.link_button(f'Abrir {network}', url)
