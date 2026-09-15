@@ -9,6 +9,7 @@ from tts import synthesize
 from render import media_duration, make_srt, render_video
 from viral import fallback_radar, fallback_hooks, publish_copy, share_links
 from youtube import authorization_url, configured as youtube_configured, credentials_from_code, upload_video
+from youtube_radar import find_rising_videos
 
 
 def get_secret(name: str) -> str:
@@ -82,13 +83,26 @@ with col2:
 if 'plan' not in st.session_state: st.session_state.plan=None
 if 'viral_hooks' not in st.session_state: st.session_state.viral_hooks=[]
 if 'last_video' not in st.session_state: st.session_state.last_video=None
+if 'youtube_radar' not in st.session_state: st.session_state.youtube_radar=[]
 
-with st.expander('🚀 Radar Viral e Modo Viral', expanded=False):
-    st.caption('Use tendências como inspiração; não promete viralização. Funciona gratuitamente, mesmo sem outra API.')
+with st.expander('🚀 Radar Viral, Canais em Ascensão e Modo Viral', expanded=False):
+    st.caption('Use referências como inspiração; não copie conteúdo de outros canais e não há promessa de viralização.')
     radar_col, reference_col = st.columns(2)
     with radar_col:
         niche = st.text_input('Nicho para o radar', placeholder='Ex.: finanças pessoais, fitness, IA')
         audience = st.text_input('Público', placeholder='Ex.: iniciantes, mães, pequenos empresários')
+        radar_days = st.selectbox('Vídeos publicados nos últimos', [7, 14, 30], index=1, format_func=lambda value: f'{value} dias')
+        if get_secret('YOUTUBE_DATA_API_KEY'):
+            if st.button('BUSCAR CANAIS E VÍDEOS EM ASCENSÃO', use_container_width=True):
+                try:
+                    with st.spinner('Pesquisando dados públicos do YouTube...'):
+                        st.session_state.youtube_radar = find_rising_videos(
+                            get_secret('YOUTUBE_DATA_API_KEY'), niche, radar_days
+                        )
+                except Exception as exc:
+                    st.error(f'Não foi possível pesquisar o YouTube: {exc}')
+        else:
+            st.info('Adicione YOUTUBE_DATA_API_KEY em Streamlit Secrets para ativar a busca real no YouTube.')
         if st.button('GERAR IDEIAS DE ALTO POTENCIAL'):
             st.session_state.radar = fallback_radar(niche, audience)
     with reference_col:
@@ -96,6 +110,20 @@ with st.expander('🚀 Radar Viral e Modo Viral', expanded=False):
         st.caption('As referências ajudam você a estudar padrões sem copiar conteúdo de outras pessoas.')
     for item in st.session_state.get('radar', []):
         st.write(f"**{item['angle']}** · Retenção: {item['retention']}\n\n{item['topic']}")
+    results = st.session_state.get('youtube_radar', [])
+    if results:
+        st.subheader('Canais e vídeos recentes para estudar')
+        st.caption('Pontuação baseada em visualizações por dia e alcance relativo ao número público de inscritos. É um sinal de momento, não previsão de resultado.')
+        for index, item in enumerate(results):
+            st.markdown(f"**{item['signal']} · {item['score']}/100 — {item['title']}**")
+            subscribers = f"{item['subscribers']:,}" if item['subscribers'] else 'não público'
+            st.caption(
+                f"Canal: {item['channel']} · {item['views']:,} visualizações em {item['age_days']} dia(s) "
+                f"· ~{item['views_per_day']:,} visualizações/dia · inscritos: {subscribers}"
+            )
+            link_col, channel_col = st.columns(2)
+            link_col.link_button('Abrir vídeo', item['video_url'], key=f"radar_video_{index}")
+            channel_col.link_button('Abrir canal', item['channel_url'], key=f"radar_channel_{index}")
     st.divider()
     st.caption('Depois de escrever o tema abaixo, o Modo Viral cria cinco aberturas para você testar.')
 

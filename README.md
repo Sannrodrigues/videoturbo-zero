@@ -70,8 +70,18 @@ baixado do Google (nunca envie esse JSON ou a chave secreta para o GitHub):
 YOUTUBE_CLIENT_ID = "cole o client_id do JSON"
 YOUTUBE_CLIENT_SECRET = "cole o client_secret do JSON"
 YOUTUBE_REDIRECT_URI = "https://videoturbo-zero-evplcslk8zxqbdbqxvqshy.streamlit.app/"
+# Chave de API restrita à YouTube Data API v3, para o Radar de Canais:
+YOUTUBE_DATA_API_KEY = "sua_chave_de_api_do_youtube"
 ```
 
 Para um app OAuth externo em teste, adicione a conta Google que publicará os
 vídeos em **Google Cloud → Google Auth Platform → Público-alvo → Usuários de
 teste**. A autorização e a publicação só ocorrem após os cliques do usuário.
+
+## Radar de Canais em Ascensão
+
+Com `YOUTUBE_DATA_API_KEY` configurada, o Radar pesquisa vídeos públicos recentes
+por nicho e apresenta sinais transparentes: idade do vídeo, visualizações, média de
+visualizações por dia e alcance relativo aos inscritos públicos do canal. Os dados
+servem para estudar temas e embalagens; não constituem uma previsão de viralização
+nem autorização para copiar conteúdo de outros criadores.
