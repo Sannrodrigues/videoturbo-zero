@@ -10,6 +10,7 @@ from render import media_duration, make_srt, render_video
 from viral import fallback_radar, fallback_hooks, publish_copy, share_links
 from youtube import authorization_url, configured as youtube_configured, credentials_from_code, upload_video
 from youtube_radar import find_rising_videos
+from monetize import GOALS, packaging_options
 
 
 def get_secret(name: str) -> str:
@@ -64,6 +65,8 @@ with st.sidebar:
 col1,col2=st.columns([2,1])
 with col1:
     topic=st.text_input('Tema do vídeo', placeholder='Ex.: Como a inteligência artificial está mudando pequenas empresas')
+    monetization_goal=st.selectbox('Objetivo do vídeo', list(GOALS))
+    destination=st.text_input('Link ou destino do CTA (opcional)', placeholder='Ex.: link do WhatsApp ou afiliado')
     mode=st.radio('Roteiro', ['Gerar automaticamente com Gemini','Usar meu próprio roteiro'], horizontal=True)
     manual=''
     if mode=='Usar meu próprio roteiro':
@@ -84,6 +87,7 @@ if 'plan' not in st.session_state: st.session_state.plan=None
 if 'viral_hooks' not in st.session_state: st.session_state.viral_hooks=[]
 if 'last_video' not in st.session_state: st.session_state.last_video=None
 if 'youtube_radar' not in st.session_state: st.session_state.youtube_radar=[]
+if 'monetization_package' not in st.session_state: st.session_state.monetization_package=None
 
 with st.expander('🚀 Radar Viral, Canais em Ascensão e Modo Viral', expanded=False):
     st.caption('Use referências como inspiração; não copie conteúdo de outros canais e não há promessa de viralização.')
@@ -170,6 +174,18 @@ if plan:
                 plan['narration'] = f'{selected_hook}\n\n{plan["narration"]}'
             st.success('Gancho aplicado ao início da narração.')
 
+    st.subheader('💰 Laboratório de Títulos, Ganchos e CTA')
+    if st.button('GERAR 5 OPÇÕES PARA MEU OBJETIVO', use_container_width=True):
+        st.session_state.monetization_options = packaging_options(plan['title'] or topic, monetization_goal, destination)
+    options = st.session_state.get('monetization_options', [])
+    if options:
+        choice = st.radio('Escolha a embalagem para a publicação', range(len(options)), format_func=lambda i: options[i]['title'])
+        chosen = options[choice]
+        st.caption(f"Gancho: {chosen['hook']}\n\nCTA: {chosen['cta']}")
+        if st.button('USAR ESTA OPÇÃO NA PUBLICAÇÃO'):
+            st.session_state.monetization_package = chosen
+            st.success('Opção selecionada para a publicação.')
+
     if st.button('2. GERAR VÍDEO COMPLETO', type='primary', use_container_width=True):
         if not pexels_key:
             st.error('Informe a chave gratuita do Pexels em Streamlit Secrets ou na barra lateral.')
@@ -195,7 +211,7 @@ if plan:
                     st.write('4/4 Montando o MP4 com FFmpeg...')
                     render_video(clips,audio,srt,out,*dims,burn_subtitles=True)
                     (job/'credits.json').write_text(json.dumps(credits, ensure_ascii=False, indent=2), encoding='utf-8')
-                    copy = publish_copy(plan['title'], topic or plan['title'], hooks)
+                    copy = st.session_state.monetization_package or publish_copy(plan['title'], topic or plan['title'], hooks)
                     st.session_state.last_video = {'path': out, 'copy': copy}
                     st.session_state.publish_title = copy['title']
                     st.session_state.publish_description = copy['description']
