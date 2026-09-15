@@ -11,6 +11,7 @@ from viral import fallback_radar, fallback_hooks, publish_copy, share_links
 from youtube import authorization_url, configured as youtube_configured, credentials_from_code, upload_video
 from youtube_radar import find_rising_videos
 from monetize import GOALS, packaging_options
+from content_studio import retention_outline, series, multiformat
 
 
 def get_secret(name: str) -> str:
@@ -185,6 +186,22 @@ if plan:
         if st.button('USAR ESTA OPÇÃO NA PUBLICAÇÃO'):
             st.session_state.monetization_package = chosen
             st.success('Opção selecionada para a publicação.')
+
+    with st.expander('📈 Retenção, Série e Versões para Redes', expanded=False):
+        st.caption('Planeje conteúdo original; revise tudo antes de publicar.')
+        if st.button('CRIAR ESTRUTURA DE RETENÇÃO'):
+            st.session_state.retention = retention_outline(plan['title'] or topic)
+        for label, text in st.session_state.get('retention', []):
+            st.write(f'**{label}** — {text}')
+        if st.button('CRIAR SÉRIE DE 10 SHORTS'):
+            st.session_state.series = series(plan['title'] or topic)
+        for i, idea in enumerate(st.session_state.get('series', []), 1):
+            st.write(f'{i}. {idea}')
+        if st.button('CRIAR VERSÕES PARA OUTRAS REDES'):
+            active = st.session_state.get('monetization_package') or {}
+            st.session_state.multiformat = multiformat(plan['title'] or topic, active.get('cta', ''))
+        for network, text in st.session_state.get('multiformat', {}).items():
+            st.text_area(network, text, key=f'multi_{network}', height=100)
 
     if st.button('2. GERAR VÍDEO COMPLETO', type='primary', use_container_width=True):
         if not pexels_key:
